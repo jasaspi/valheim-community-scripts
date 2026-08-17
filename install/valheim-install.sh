@@ -60,11 +60,22 @@ fetch_and_deploy_from_url \
 chown -R steam:steam /opt/steamcmd
 
 msg_info "Installing Valheim Dedicated Server (Patience)"
-$STD runuser -u steam -- /opt/steamcmd/steamcmd.sh \
-  +force_install_dir /opt/valheim/server \
-  +login anonymous \
-  +app_update 896660 validate \
-  +quit
+# SteamCMD can fail with "Missing configuration" on its first app_update
+# after a fresh install (appinfo cache not ready) — retry covers it.
+for attempt in 1 2 3; do
+  if $STD runuser -u steam -- /opt/steamcmd/steamcmd.sh \
+    +force_install_dir /opt/valheim/server \
+    +login anonymous \
+    +app_update 896660 validate \
+    +quit; then
+    break
+  fi
+  if [[ $attempt -eq 3 ]]; then
+    msg_error "SteamCMD failed to install Valheim after 3 attempts"
+    exit 1
+  fi
+  sleep 5
+done
 msg_ok "Installed Valheim Dedicated Server"
 
 msg_info "Writing Server Settings"
